@@ -668,6 +668,24 @@ function fmtDate(d){ const dt = new Date(d+"T00:00:00"); return dt.toLocaleDateS
 function readTime(body){ const words = body.join(" ").split(/\s+/).length; return Math.max(1, Math.round(words/200)); }
 function liveArticles(){ return ARTICLES.filter(a=>a.status==="live").sort((a,b)=> new Date(b.date)-new Date(a.date)); }
 function esc(s){ return (s||"").replace(/[&<>"']/g, c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c])); }
+/* Turn a title into a URL-friendly slug, e.g. "Iran Tanker Strait of Hormuz" -> "iran-tanker-strait-of-hormuz" */
+function slugify(s){
+  return String(s||"")
+    .toLowerCase()
+    .normalize("NFKD").replace(/[\u0300-\u036f]/g,"") // strip accents
+    .replace(/[^a-z0-9]+/g,"-")
+    .replace(/^-+|-+$/g,"")
+    .slice(0,80)
+    .replace(/-+$/,"");
+}
+/* Make sure the slug doesn't collide with an existing article id (e.g. two stories with the same title) */
+function uniqueSlug(base, existingIds){
+  const slug = base || "story";
+  if(!existingIds.includes(slug)) return slug;
+  let i = 2;
+  while(existingIds.includes(`${slug}-${i}`)) i++;
+  return `${slug}-${i}`;
+}
 function showToast(msg){ const t=document.getElementById("toast"); t.textContent=msg; t.classList.add("show"); clearTimeout(window._toastT); window._toastT=setTimeout(()=>t.classList.remove("show"), 2400); }
 /* ---------- URL routing: every page gets its own shareable link ---------- */
 function viewToHash(v){
@@ -1362,7 +1380,7 @@ function renderCMSForm(app){
     const wasLiveBefore = !isNew && ARTICLES.find(x=>x.id===d.id)?.status==="live";
     const newStatus = document.getElementById("fStatus").value;
     const updated = {
-      id: d.id || ("a"+Date.now()),
+      id: d.id || uniqueSlug(slugify(title), ARTICLES.map(a=>a.id)),
       title,
       dek: document.getElementById("fDek").value.trim(),
       category: document.getElementById("fCat").value,
