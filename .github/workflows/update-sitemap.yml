@@ -1,0 +1,35 @@
+name: Update sitemap
+
+# Runs automatically once a day, and can also be triggered manually from
+# the "Actions" tab on GitHub (Run workflow button) if you want a fresh
+# sitemap right now instead of waiting for the schedule.
+on:
+  schedule:
+    - cron: "0 6 * * *"   # every day at 06:00 UTC — adjust if you like
+  workflow_dispatch: {}
+
+jobs:
+  update-sitemap:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write   # needed so the workflow can push the updated file back
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Install dependencies
+        run: npm install @supabase/supabase-js
+
+      - name: Generate sitemap
+        run: node generate-sitemap.js
+
+      - name: Commit updated sitemap (if it changed)
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add sitemap.xml
+          git diff --staged --quiet || git commit -m "Auto-update sitemap.xml"
+          git push
