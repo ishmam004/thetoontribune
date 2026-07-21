@@ -11,6 +11,43 @@
      ===================================================================== -->
 <script>window.SITE_URL = "https://toon-tribune.vercel.app";</script>
 
+<!-- =====================================================================
+     GOOGLE ANALYTICS (GA4)
+     Replace G-XXXXXXXXXX with your real Measurement ID from
+     analytics.google.com (Admin → Data Streams → your web stream).
+     Because this site is a single-page app that routes with URL
+     hashes (#/article/...), the default "page_view" gtag.js sends on
+     load only fires once. We turn off gtag's automatic page_view and
+     send one manually on every render() call instead (see trackPageview()
+     near the bottom of this file), so each article/category/search view
+     is counted as its own pageview in GA.
+     ===================================================================== -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-XXXXXXXXXX"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){ dataLayer.push(arguments); }
+  gtag('js', new Date());
+  gtag('config', 'G-XXXXXXXXXX', { send_page_view: false });
+</script>
+
+<!-- =====================================================================
+     GOOGLE ADSENSE
+     Publisher ID (ca-pub-9594881857947602) is already wired in below and
+     in the ad-unit template further down (adSlotHTML). This script also
+     enables Auto ads once Google approves your site — Google will
+     automatically place ads for you. If you'd rather control placement
+     yourself, use only the manual <ins class="adsbygoogle"> units placed
+     in the page (see adSlotHTML() further down, called from renderHome()
+     and renderArticle()).
+     Do NOT rely on this script until your AdSense account has been
+     approved — Google requires the site to be live with real content
+     first, and applying with a not-yet-approved account can itself
+     cause rejection.
+     ===================================================================== -->
+<meta name="google-adsense-account" content="ca-pub-9594881857947602">
+<script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-9594881857947602"
+        crossorigin="anonymous"></script>
+
 <meta name="google-site-verification" content="3NZ_Ie8aOPae6FJkwAsglM9WmMkfVskx0gIHTO2HaoA" />
 <title>The Toon Tribune — Comics, Culture &amp; News</title>
 <meta name="description" content="The Toon Tribune covers national and international news, sports, entertainment, technology, politics and research — with a comic-strip sensibility.">
@@ -1036,6 +1073,51 @@ function render(){
   else if(VIEW.type==="search") renderSearch(app);
   else if(VIEW.type==="cms") renderCMS(app);
   updateSEO();
+  trackPageview();
+  refreshAds();
+}
+
+/* ---------- Google Analytics (GA4) ----------
+   Sends a manual page_view on every SPA navigation. gtag's automatic
+   page_view is disabled in <head> (send_page_view:false) so we don't
+   double-count the very first load. */
+function trackPageview(){
+  if(typeof gtag !== "function") return; // GA script blocked/not loaded (ad blocker, offline, etc.)
+  const path = "/" + (location.hash || "").replace(/^#\/?/, "");
+  gtag('event', 'page_view', {
+    page_title: document.title,
+    page_location: window.location.href,
+    page_path: path
+  });
+}
+
+/* ---------- Google AdSense ----------
+   Every time render() swaps app.innerHTML, any <ins class="adsbygoogle">
+   elements it just inserted are brand new DOM nodes and need to be
+   "activated" individually. Call (adsbygoogle = window.adsbygoogle ||
+   []).push({}) once per new <ins> tag. */
+function refreshAds(){
+  if(typeof adsbygoogle === "undefined") return; // AdSense script blocked/not loaded
+  document.querySelectorAll("ins.adsbygoogle:not([data-ad-status])").forEach(()=>{
+    try{ (window.adsbygoogle = window.adsbygoogle || []).push({}); }
+    catch(e){ /* ignore duplicate-push errors */ }
+  });
+}
+
+/* One reusable ad unit. Replace data-ad-slot with a real slot ID created
+   in your AdSense account (Ads → By ad unit → Display ads). Leave
+   data-ad-client as-is; it just mirrors the client ID from the <script>
+   tag in <head>. */
+function adSlotHTML(slotId){
+  return `
+    <div class="ad-slot" style="margin:20px 0;text-align:center;">
+      <ins class="adsbygoogle"
+           style="display:block"
+           data-ad-client="ca-pub-9594881857947602"
+           data-ad-slot="${slotId}"
+           data-ad-format="auto"
+           data-full-width-responsive="true"></ins>
+    </div>`;
 }
 
 /* ---------- SEO: keep <title>, meta tags, canonical & structured data in
@@ -1162,6 +1244,8 @@ function renderHome(app){
     </div>
   `;
 
+  html += adSlotHTML("1111111111"); // TODO: replace with a real homepage ad-unit slot ID
+
   CATEGORIES.forEach(cat=>{
     const items = rest.filter(a=>a.category===cat).slice(0,3);
     if(items.length===0) return;
@@ -1224,6 +1308,7 @@ function renderArticle(app){
       <div class="byline"><span>${esc(a.author)} · ${fmtDate(a.date)}</span><span>${readTime(a.body)} min read</span></div>
       <div style="margin:10px 0;"><button class="btn btn-sm btn-outline" id="shareBtn">🔗 Share</button></div>
       ${heroSrc ? `<img class="article-hero-img" src="${heroSrc}" alt="${esc(a.title)}">` : `<div class="article-hero-img ${catClass(a.category)}" style="display:flex;align-items:center;justify-content:center;font-size:110px;height:280px;">${a.emoji||"📰"}</div>`}
+      ${adSlotHTML("2222222222")}
       <div class="article-body">${paragraphs}</div>
     </div>
     ${related.length? `
