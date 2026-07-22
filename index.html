@@ -1447,15 +1447,36 @@ function renderCMSForm(app){
     </div>
   `;
   document.getElementById("fCancel").addEventListener("click", ()=>{ EDIT_DRAFT=null; render(); });
-  document.getElementById("fImageFile").addEventListener("change", (e)=>{
+  document.getElementById("fImageFile").addEventListener("change", async (e)=>{
     const file = e.target.files[0];
     if(!file) return;
     if(!file.type.startsWith("image/")){ showToast("Please choose an image file"); e.target.value=""; return; }
-    if(file.size > 1.5*1024*1024){ showToast("Image is too large — please use one under 1.5MB"); e.target.value=""; return; }
-    const reader = new FileReader();
-    reader.onload = ()=>{ d.image = reader.result; render(); };
-    reader.onerror = ()=>{ showToast("Couldn't read that image"); };
-    reader.readAsDataURL(file);
+    if(file.size > 4*1024*1024){ showToast("Image is too large — please use one under 4MB"); e.target.value=""; return; }
+    if(!db){ showToast("Supabase isn't configured — can't upload images"); e.target.value=""; return; }
+    showToast("Uploading image…");
+    try{
+      // Store the image in Supabase Storage (bucket: article-images) and save
+      // only the resulting URL on the article — NOT the image bytes. This is
+      // what keeps article saves small and fast; see notes in supabaseConfig
+      // above for one-time bucket setup.
+      const ext = (file.name.split(".").pop() || "jpg").toLowerCase().replace(/[^a-z0-9]/g,"") || "jpg";
+      const path = `${(d.id || "draft")}-${Date.now()}.${ext}`;
+      const { error: upErr } = await db.storage.from("article-images").upload(path, file, {
+        cacheControl: "3600",
+        upsert: true,
+        contentType: file.type
+      });
+      if(upErr) throw upErr;
+      const { data: pub } = db.storage.from("article-images").getPublicUrl(path);
+      d.image = pub.publicUrl; // short URL string, not base64
+      showToast("Image uploaded");
+      render();
+    }catch(err){
+      console.error(err);
+      showToast("Upload failed: " + (err.message || "unknown error") + " — did you create the 'article-images' bucket?");
+    }finally{
+      e.target.value = "";
+    }
   });
   const fImageClearBtn = document.getElementById("fImageClear");
   if(fImageClearBtn) fImageClearBtn.addEventListener("click", ()=>{ d.image = null; render(); });
