@@ -696,8 +696,8 @@ function seedArticles(){
 
 /* ---------- utils ---------- */
 function imgSrcFor(a){
-  if(typeof a.image === "string" && a.image.indexOf("data:")===0) return a.image;
   if(a.image === "poster") return POSTER_SRC;
+  if(typeof a.image === "string" && (a.image.startsWith("data:") || a.image.startsWith("http"))) return a.image;
   return null;
 }
 function catClass(cat){ return "cat-"+cat; }
@@ -1469,6 +1469,8 @@ function renderCMSForm(app){
       if(upErr) throw upErr;
       const { data: pub } = db.storage.from("article-images").getPublicUrl(path);
       d.image = pub.publicUrl; // short URL string, not base64
+      const prev = document.getElementById("fImgPreview");
+      if(prev) prev.innerHTML = `<img src="${d.image}" style="width:100%;height:100%;object-fit:cover;">`;
       showToast("Image uploaded");
       render();
     }catch(err){
